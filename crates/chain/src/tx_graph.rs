@@ -181,6 +181,7 @@ pub struct TxGraph<A = ConfirmationBlockTime> {
 
     txs_by_highest_conf_heights: BTreeSet<(u32, Txid)>,
     txs_by_last_seen: BTreeSet<(u64, Txid)>,
+    confirmation_requirement: ConfirmationRequirement,
 
     // The following fields exist so that methods can return references to empty sets.
     // FIXME: This can be removed once `HashSet::new` and `BTreeSet::new` are const fns.
@@ -198,6 +199,7 @@ impl<A> Default for TxGraph<A> {
             last_evicted: Default::default(),
             txs_by_highest_conf_heights: Default::default(),
             txs_by_last_seen: Default::default(),
+            confirmation_requirement: ConfirmationRequirement::One,
             empty_outspends: Default::default(),
             empty_anchors: Default::default(),
         }
@@ -551,6 +553,14 @@ impl<A> TxGraph<A> {
     /// Whether the graph has any transactions or outputs in it.
     pub fn is_empty(&self) -> bool {
         self.txs.is_empty()
+    }
+
+    /// Configure confirmation requirement of a transaction to 1, 3, or 6 blocks
+    pub fn set_confirmation_requirement(
+        &mut self,
+        confirmation_requirement: ConfirmationRequirement,
+    ) {
+        self.confirmation_requirement = confirmation_requirement;
     }
 }
 
@@ -1223,6 +1233,19 @@ impl<A: Anchor> TxGraph<A> {
         graph.apply_changeset(changeset);
         graph
     }
+}
+
+/// Required number of block confirmations for spendability
+///
+/// Default is set to 1, and can be configured to 3 and 6
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConfirmationRequirement {
+    /// One block depth is required for a transaction to be confirmed
+    One,
+    /// Three block depth is required for a transaction to be confirmed
+    Three,
+    /// Six block depth is required for a transaction to be confirmed
+    Six,
 }
 
 /// The [`ChangeSet`] represents changes to a [`TxGraph`].
