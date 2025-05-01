@@ -120,7 +120,7 @@ impl<A: Anchor> FullTxOut<A> {
     /// less than the actual value.
     ///
     /// [`confirmation_height_upper_bound`]: Anchor::confirmation_height_upper_bound
-    pub fn is_confirmed_and_spendable(&self, tip: u32) -> bool {
+    pub fn is_confirmed_and_spendable(&self, tip: u32, min_conf: u32) -> bool {
         if !self.is_mature(tip) {
             return false;
         }
@@ -129,7 +129,7 @@ impl<A: Anchor> FullTxOut<A> {
             Some(height) => height,
             None => return false,
         };
-        if conf_height > tip {
+        if conf_height > min_conf {
             return false;
         }
 

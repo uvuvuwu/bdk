@@ -1126,7 +1126,12 @@ impl<A: Anchor> TxGraph<A> {
         for (spk_i, txout) in self.try_filter_chain_unspents(chain, chain_tip, outpoints)? {
             match &txout.chain_position {
                 ChainPosition::Confirmed { .. } => {
-                    if txout.is_confirmed_and_spendable(chain_tip.height) {
+                    let min_conf = self
+                        .confirmation_requirement
+                        .required_block_height(chain_tip.height);
+                    // TODO: for any txs that aren't at the required block height yet, they are confirmed
+                    // but not added to any balance yet. Need to fix
+                    if txout.is_confirmed_and_spendable(chain_tip.height, min_conf) {
                         confirmed += txout.txout.value;
                     } else if !txout.is_mature(chain_tip.height) {
                         immature += txout.txout.value;
@@ -1246,6 +1251,23 @@ pub enum ConfirmationRequirement {
     Three,
     /// Six block depth is required for a transaction to be confirmed
     Six,
+}
+
+impl ConfirmationRequirement {
+    fn as_u32(&self) -> u32 {
+        match self {
+            ConfirmationRequirement::One => 1,
+            ConfirmationRequirement::Three => 3,
+            ConfirmationRequirement::Six => 6,
+        }
+    }
+
+    /// Returns the minimum block height required to satisfy the confirmation depth.
+    pub fn required_block_height(&self, tip: u32) -> u32 {
+        let depth = self.as_u32();
+        // Tip is already depth 1, so depth is actually depth - 1.
+        tip - depth - 1
+    }
 }
 
 /// The [`ChangeSet`] represents changes to a [`TxGraph`].
